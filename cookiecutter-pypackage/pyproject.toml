@@ -1,0 +1,114 @@
+[build-system]
+requires = ["setuptools>=42", "wheel", "setuptools_scm[toml]>=3.4"]
+build-backend = "setuptools.build_meta"
+
+# Enables the usage of setuptools_scm
+[tool.setuptools_scm]
+"root" = ".."
+
+[tool.pyright]
+exclude = ["build/**"]
+
+[tool.isort]
+profile = "black"
+line_length = 120
+extend_skip_glob = [
+    "venv*/*",
+    "log/*"
+    ]
+
+[tool.black]
+line_length = 120
+extend-exclude = "venv.*"
+
+[tool.pylint.master]
+recursive = "yes"
+# Add McCabe code complexity checker
+load-plugins= """
+    pylint.extensions.mccabe
+    """
+# The following settings modify the behavior when running pylint with pylint.extensions.docparams plugin loaded
+accept-no-param-doc = "no"
+accept-no-raise-doc = "no"
+accept-no-return-doc = "no"
+accept-no-yields-doc = "no"
+ignore = [
+    "conf.py", # The Sphinx config file
+    "build",
+    "dist",
+    "log"
+    ]
+ignore-patterns = [
+    "venv.*",
+    "^\\..+" # Ignore hidden folders or files
+    ]
+
+[tool.pylint.messages_control]
+max-line-length = 120
+# https://github.com/samuelcolvin/pydantic/issues/1961
+extension-pkg-whitelist = "pydantic"
+# ignore unrecognized-option because of https://github.com/PyCQA/pylint/issues/6799
+disable = """
+    unrecognized-option,
+    too-few-public-methods,
+    logging-fstring-interpolation,
+    too-many-instance-attributes,
+    too-many-arguments,
+    missing-function-docstring
+    """
+
+[tool.pylint.similarities]
+# Exclude the following from code duplication checks
+ignore-comments = "yes"
+ignore-docstrings = "yes"
+ignore-imports = "yes"
+ignore-signatures = "yes"
+
+[tool.mypy]
+# Functions need to be annotated
+disallow_untyped_defs = true
+warn_unused_ignores = true
+exclude = [
+    "cookiecutter-pypackage-\\d+", # Ignore temporary folder created by setuptools when building an sdist
+    "venv.*/",
+    "log/",
+    "build/",
+    "dist/"
+    ]
+
+[tool.pytest.ini_options]
+addopts = """
+    -vv
+    --doctest-modules
+    --import-mode=append
+    --ignore-glob=cookiecutter-pypackage-[0-9]*
+    --cov=cookiecutter_pypackage
+    --cov-config=pyproject.toml
+    --cov-report=
+    """
+
+[tool.coverage.run]
+branch = true
+data_file = "reports/.coverage"
+
+[tool.coverage.paths]
+# Maps coverage measured in site-packages to source files in src
+source = ["src/", ".tox/*/lib/python*/site-packages/"]
+
+[tool.coverage.html]
+directory = "reports/coverage_html"
+
+[tool.coverage.xml]
+output = "reports/coverage.xml"
+
+[tool.pydocstyle]
+convention = "google"
+# Ignore folders starting with "venv" or with a dot. Also ignore some build directories
+match-dir = "(?!venv|\\.|build|log$|dist).*"
+
+[[tool.mypy.overrides]]
+module = [
+    # Ignore packages that do not provide type hints here
+    # For example, add "dash.*" to ignore all imports from Dash
+    ]
+ignore_missing_imports = true

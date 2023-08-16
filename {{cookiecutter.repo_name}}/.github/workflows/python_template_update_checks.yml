@@ -1,0 +1,15 @@
+name: Python template update checks
+on:
+  push:
+    branches:
+      - "chore/update-template**"
+jobs:
+  fail-if-rej-files-exist:
+    name: "Check for rejected files"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      # Assert that 0 files ending with '.rej' are in the current working directory.
+      # `xargs` returns 0 on success, otherwise status codes between 1 and 127, see
+      # https://man7.org/linux/man-pages/man1/xargs.1.html for details.
+      - run: find . -iname "*.rej" | wc -l | xargs -I % test % -eq 0

@@ -1,0 +1,11 @@
+default_context:
+  full_name: "Max Mustermann"
+  email: "max.mustermann@example.com"
+  github_user: "max-mustermann"
+  project_name: "Cookiecutter PyPackage"
+  repo_name: "cookiecutter-pypackage"
+  package_name: "cookiecutter-pypackage"
+  import_name: "cookiecutter_pypackage"
+  project_short_description: "A cookiecutter for Python packages."
+  url: "www.example.com"
+  _debug: "True"

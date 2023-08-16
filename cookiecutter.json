@@ -1,0 +1,19 @@
+{
+  "full_name": "{% gituser %}",
+  "email": "{% gitemail %}",
+  "github_user": "",
+  "project_name": "voraus Robot Library",
+  "repo_name": "{{ cookiecutter.project_name.lower().replace(' ', '-') }}",
+  "package_name": "{{ cookiecutter.repo_name }}",
+  "import_name": "{{ cookiecutter.package_name.replace('-', '_') }}",
+  "project_short_description": "A library for robots that helps with a lot of things.",
+  "url": "https://github.com/vorausrobotik/{{ cookiecutter.repo_name }}",
+  "_debug": "False",
+  "_extensions": [
+    "extensions.git_extension.GitExtension"
+  ],
+  "_copy_without_render": [
+    "docs/license_compliance.rst",
+    "jreleaser.yml"
+  ]
+}
