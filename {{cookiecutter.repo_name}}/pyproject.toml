@@ -91,7 +91,6 @@ addopts = """
 
 [tool.coverage.run]
 branch = true
-data_file = "reports/.coverage"
 
 [tool.coverage.paths]
 # Maps coverage measured in site-packages to source files in src
