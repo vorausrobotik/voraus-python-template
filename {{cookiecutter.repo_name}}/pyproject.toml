@@ -96,6 +96,16 @@ branch = true
 # Maps coverage measured in site-packages to source files in src
 source = ["src/", ".tox/*/lib/python*/site-packages/"]
 
+[tool.coverage.report]
+exclude_also = [
+    "\\.\\.\\.",
+    "if TYPE_CHECKING:"
+    ]
+partial_branches = [
+    "pragma: no branch",
+    "if not TYPE_CHECKING:"
+    ]
+
 [tool.coverage.html]
 directory = "reports/coverage_html"
 
