@@ -13,7 +13,7 @@
     "extensions.git_extension.GitExtension"
   ],
   "_copy_without_render": [
-    "docs/license_compliance.rst",
+    "docs/_templates/license_compliance.rst.j2",
     "jreleaser.yml"
   ]
 }
