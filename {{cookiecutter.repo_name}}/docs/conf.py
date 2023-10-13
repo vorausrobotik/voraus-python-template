@@ -18,7 +18,6 @@
 import json
 import os
 import sys
-from pathlib import Path
 
 import importlib_metadata
 
@@ -47,22 +46,9 @@ template_extensions: list[str] = [
     "sphinx.ext.doctest",
     "sphinx.ext.napoleon",
     "sphinx_autodoc_typehints",
-    "sphinx_jinja",
 ]
 
 extensions = template_extensions + custom_extensions
-
-licenses_file = Path(__file__).parent.resolve() / "ossLicenses.json"
-if licenses_file.is_file():
-    with open(file=licenses_file, mode="r", encoding="utf-8") as handle:
-        licenses = json.load(fp=handle)
-        for license in licenses:
-            for key in ["LicenseFile", "NoticeFile"]:
-                if license[key] != "UNKNOWN":
-                    license[key] = os.path.relpath(license[key], cwd)
-                else:
-                    license[key] = None
-        jinja_contexts = {"main_context": {"licenses": licenses}}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]

@@ -82,6 +82,7 @@ addopts = """
     --doctest-modules
     --import-mode=append
     --ignore-glob=cookiecutter-pypackage-[0-9]*
+    --ignore="docs/_scripts"
     --cov=cookiecutter_pypackage
     --cov-config=pyproject.toml
     --cov-report=
