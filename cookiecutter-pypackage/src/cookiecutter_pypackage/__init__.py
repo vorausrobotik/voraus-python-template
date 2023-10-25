@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """A cookiecutter for Python packages."""
 
 from importlib_metadata import PackageNotFoundError as _PackageNotFoundError
