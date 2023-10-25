@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """{{ cookiecutter.project_short_description }}"""
 
 from importlib_metadata import PackageNotFoundError as _PackageNotFoundError

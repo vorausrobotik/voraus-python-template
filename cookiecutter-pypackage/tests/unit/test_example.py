@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """This module contains example tests."""
 
 from pathlib import Path
