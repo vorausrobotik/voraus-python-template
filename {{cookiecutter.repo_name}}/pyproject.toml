@@ -26,7 +26,7 @@ extend-exclude = "venv.*"
 [tool.ruff]
 line-length = 120
 src = ["src"]
-select = ["D"]
+select = ["C901", "D"]
 extend-exclude = [
     "log",
 ]
@@ -42,7 +42,6 @@ convention = "google"
 [tool.pylint.master]
 recursive = "yes"
 load-plugins= """
-    pylint.extensions.mccabe,
     pylint.extensions.docparams
     """
 # The following settings modify the behavior of the docparams plugin
