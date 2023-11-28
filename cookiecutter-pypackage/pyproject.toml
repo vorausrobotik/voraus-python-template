@@ -39,10 +39,7 @@ convention = "google"
 
 [tool.pylint.master]
 recursive = "yes"
-load-plugins= """
-    pylint.extensions.docparams
-    """
-# The following settings modify the behavior of the docparams plugin
+# The following settings modify the behavior when running pylint with pylint.extensions.docparams plugin loaded
 accept-no-param-doc = "no"
 accept-no-raise-doc = "no"
 accept-no-return-doc = "no"
@@ -64,6 +61,7 @@ max-line-length = 120
 extension-pkg-whitelist = "pydantic"
 # ignore unrecognized-option because of https://github.com/PyCQA/pylint/issues/6799
 disable = """
+    unrecognized-option,
     too-few-public-methods,
     logging-fstring-interpolation,
     too-many-instance-attributes,
