@@ -1,0 +1,49 @@
+name: Pull Request Lint
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, labeled, unlabeled]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  main:
+    name: Validate PR title and description
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          requireScope: false
+          # Configure additional validation for the subject based on a regex.
+          # This ensures the subject does start with an uppercase character.
+          subjectPattern: ^(?![a-z])(?![a-zA-Z]+s\s(?<!ss\s)).+[^\.\?\!]$
+          # If `subjectPattern` is configured, you can use this property to override
+          # the default error message that is shown when the pattern doesn't match.
+          # The variables `subject` and `title` can be used within the message.
+          subjectPatternError: |
+            The subject "{subject}" found in the pull request title "{title}"
+            didn't match the configured pattern. Please ensure that:
+            - The subject does start with an uppercase character
+            - The subject does not end with a dot, question or exclamation mark
+            - The subject uses imperative mood
+          # If the PR contains one of these newline-delimited labels, the
+          # validation is skipped.
+          ignoreLabels: |
+            bot
+            ignore-semantic-pull-request
+            rebase
+      - name: Validate PR body is filled
+        env:
+          BODY_CONTEXT: ${{ toJson(github.event.pull_request.body) }}
+        run: |
+          if [ "$BODY_CONTEXT" = "null" ];\
+          then\
+            echo "Error: The pull request body is empty." &&\
+            echo "Please add a description why the change is necessary and link tickets." &&\
+            (exit 1);
+          else\
+            echo "PR Body is not empty. Check passed.";\
+          fi\
