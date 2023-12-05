@@ -1,6 +1,4 @@
 import os
-from pathlib import Path
-from typing import Any, List
 
 os.system("isort .")
 os.system("black .")
