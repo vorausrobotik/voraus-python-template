@@ -2,9 +2,6 @@ import os
 from pathlib import Path
 from typing import Any, List
 
-from git import Actor, Repo
-from git.cmd import Git
-
 os.system("isort .")
 os.system("black .")
 
