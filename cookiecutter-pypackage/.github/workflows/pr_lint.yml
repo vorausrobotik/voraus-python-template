@@ -32,8 +32,6 @@ jobs:
           # If the PR contains one of these newline-delimited labels, the
           # validation is skipped.
           ignoreLabels: |
-            bot
-            ignore-semantic-pull-request
             rebase
       - name: Validate PR body is filled
         env:
