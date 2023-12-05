@@ -8,14 +8,10 @@ Projects are created and updated via [cruft](https://github.com/cruft/cruft/).
 Create a new virtual environment and install necessary dependencies.
 
 ```
-python3.9 -m venv venv
+python3.11 -m venv venv
 source venv/bin/activate
-pip install cruft isort black cookiecutter==1.7.3
+pip install cruft isort black cookiecutter==2.5.0
 ```
-
-> **Note**
-> Installing an older version of cookiecutter is required because a regression was introduced in `cookiecutter==2.1.0`.
-
 
 ## Creating a New Project
 
