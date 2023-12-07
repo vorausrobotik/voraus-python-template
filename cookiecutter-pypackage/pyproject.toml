@@ -123,11 +123,6 @@ directory = "reports/coverage_html"
 [tool.coverage.xml]
 output = "reports/coverage.xml"
 
-[tool.pydocstyle]
-convention = "google"
-# Ignore folders starting with "venv" or with a dot. Also ignore some build directories
-match-dir = "(?!venv|\\.|build|log$|dist).*"
-
 [[tool.mypy.overrides]]
 module = [
     # Ignore packages that do not provide type hints here
