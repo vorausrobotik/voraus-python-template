@@ -5,6 +5,16 @@ from importlib_metadata import version as _version
 
 __module_name__ = "cookiecutter_pypackage"
 
+
+def get_app_name() -> str:
+    """Returns the human-readable and prettified name of the application.
+
+    Returns:
+        The name of the application.
+    """
+    return __module_name__.replace("_", "-")
+
+
 try:  # pragma: no cover
     __version__ = _version(__module_name__)
 except _PackageNotFoundError as error:  # pragma: no cover
