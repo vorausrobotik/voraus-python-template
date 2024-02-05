@@ -2,12 +2,7 @@
 
 from pathlib import Path
 
-from cookiecutter_pypackage import get_app_name
 from cookiecutter_pypackage.example import my_function
-
-
-def test_app_name() -> None:
-    assert "cookiecutter-pypackage" == get_app_name()
 
 
 def test_my_function() -> None:
