@@ -26,17 +26,17 @@ extend-exclude = "venv.*"
 [tool.ruff]
 line-length = 120
 src = ["src"]
-select = ["C901", "D"]
+lint.select = ["C901", "D"]
 extend-exclude = [
     "log",
 ]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "tests/**" = [
     "D103", # Missing docstring in public function
 ]
 
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 convention = "google"
 
 [tool.pylint.master]
