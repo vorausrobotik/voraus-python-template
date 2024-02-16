@@ -1,7 +1,7 @@
 .. include:: ../README.rst
 
-Contents:
-=========
+Contents
+========
 
 .. toctree::
    :maxdepth: 2
@@ -12,8 +12,8 @@ Contents:
    authors
 
 
-License Compliance Information:
-===============================
+License Compliance Information
+==============================
 
 .. toctree::
    :maxdepth: 1
