@@ -15,6 +15,3 @@ jobs:
 
       - name: Run static checks
         run: uv run tox run -e lint
-
-      - name: DEBUG
-        run: echo "DEBUG MESSAGE"
