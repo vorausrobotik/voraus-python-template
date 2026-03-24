@@ -1,0 +1,106 @@
+name: Template Update
+
+on:
+  schedule:
+    # Run every Saturday at 3:00 AM UTC
+    - cron: '0 3 * * 6'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  update-template:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Check for template updates
+        id: check
+        run: |
+          if uvx cruft check; then
+            echo "update_available=false" >> $GITHUB_OUTPUT
+            echo "No template updates available"
+          else
+            echo "update_available=true" >> $GITHUB_OUTPUT
+            echo "Template updates available"
+          fi
+
+      - name: Get template commit info
+        if: steps.check.outputs.update_available == 'true'
+        id: template_info
+        run: |
+          # Get current template commit before update
+          CURRENT_COMMIT=$(jq -r '.commit' .cruft.json)
+          echo "current_commit=$CURRENT_COMMIT" >> $GITHUB_OUTPUT
+
+          # Get template repo URL
+          TEMPLATE_URL=$(jq -r '.template' .cruft.json)
+          echo "template_url=$TEMPLATE_URL" >> $GITHUB_OUTPUT
+
+          # Get checkout reference (branch/tag) if specified
+          CHECKOUT=$(jq -r '.checkout // "null"' .cruft.json)
+          echo "checkout=$CHECKOUT" >> $GITHUB_OUTPUT
+
+      - name: Update template
+        if: steps.check.outputs.update_available == 'true'
+        run: uvx cruft update --skip-apply-ask
+
+      - name: Get updated commit info and changes
+        if: steps.check.outputs.update_available == 'true'
+        id: changes
+        run: |
+          # Get new commit after update
+          LATEST_COMMIT=$(jq -r '.commit' .cruft.json)
+          echo "latest_commit=$LATEST_COMMIT" >> $GITHUB_OUTPUT
+
+          CURRENT_COMMIT="${{ steps.template_info.outputs.current_commit }}"
+          TEMPLATE_URL="${{ steps.template_info.outputs.template_url }}"
+
+          # Clone template repo to get commit history
+          git clone "$TEMPLATE_URL" /tmp/template_repo
+          cd /tmp/template_repo
+
+          # Get all commits since current commit
+          COMMITS=$(git log --oneline $CURRENT_COMMIT..HEAD --pretty=format:"- %h %s")
+          echo "commits<<EOF" >> $GITHUB_OUTPUT
+          echo "$COMMITS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create Pull Request
+        if: steps.check.outputs.update_available == 'true'
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: Update from template'
+          branch: chore/update-template-${{ steps.changes.outputs.latest_commit }}
+          delete-branch: true
+          title: 'chore: Update from template'
+          body: |
+            This PR updates the project from the cookiecutter template.
+
+            ## Template Changes
+
+            Template: `${{ steps.template_info.outputs.template_url }}`
+            Current commit: `${{ steps.template_info.outputs.current_commit }}`
+            Latest commit: `${{ steps.changes.outputs.latest_commit }}`
+
+            ### Commits included in this update:
+
+            ${{ steps.changes.outputs.commits }}
+
+            ---
+
+            *This PR was automatically created by the template update workflow.*
+
+            ⚠️ **Please review the changes carefully**, especially:
+            - Check for any `.rej` files that indicate merge conflicts
+            - Verify that project-specific customizations are preserved
+            - Run tests to ensure nothing broke
+          labels: |
+            template-update
+            automated

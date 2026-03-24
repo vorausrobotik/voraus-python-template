@@ -1,0 +1,73 @@
+:root {
+    --border-radius: 3px;
+    --admonition-title-border-radius: var(--border-radius) var(--border-radius) 0px 0px;
+    --admonition-border-radius: var(--border-radius) var(--border-radius) var(--border-radius) var(--border-radius);
+    --font-family: "Roboto", sans-serif;
+}
+
+@font-face {
+    font-family: "Roboto";
+    src: url("../fonts/Roboto-Regular.ttf");
+}
+
+h1,
+h2,
+h3 {
+    font-family: "Roboto", sans-serif;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+td {
+    min-width: 70px;
+}
+
+.bg-gray-dark {
+    background-color: black;
+}
+
+.inline-image {
+    display: inline-block;
+    margin: 0;
+}
+
+
+#content p>img {
+    margin-top: 0;
+}
+
+/* Force badge images to display inline */
+.badges p {
+    display: inline;
+}
+
+.badges img {
+    display: inline-block !important;
+    margin: 0 !important;
+    vertical-align: middle;
+}
+
+.num-ref {
+    font-size: 22px;
+    vertical-align: -3px;
+    color: #4A568F;
+}
+
+/* Dark mode */
+.dark .inline-image {
+    filter: invert(1) brightness(2) contrast(1);
+}
+
+.dark .num-ref {
+    color: #fff
+}
+
+.subtitle {
+    color: #78838F;
+}
+
+
+/* Fixes: tocdepth settings of rst_prolog not working for optional subchapters inside of commands */
+#right-sidebar ul ul ul {
+    display: none
+}

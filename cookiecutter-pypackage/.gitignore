@@ -24,6 +24,9 @@ dist/
 .jfrog/
 *.class
 *.py[cod]
+__pycache__/
+.mypy_cache/
+.ruff_cache/
 *.jar
 cookiecutter-pypackage-[0-9]*
 
@@ -36,7 +39,7 @@ cookiecutter-pypackage-[0-9]*
 .vscode/
 
 # Virtual environments
-venv/
+venv*/
 .venv/
 .conda/
 

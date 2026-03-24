@@ -41,12 +41,11 @@ custom_extensions: list[str] = []
 
 # DO NOT ADD ANY EXTENSIONS TO THIS LIST, USE THE `custom_extensions` list for your extensions
 template_extensions: list[str] = [
+    "myst_parser",
     "sphinx.ext.autodoc",
-    "sphinx.ext.viewcode",
     "sphinx.ext.doctest",
     "sphinx.ext.napoleon",
     "sphinx_autodoc_typehints",
-    "sphinxawesome_theme.highlighting",
 ]
 
 extensions = template_extensions + custom_extensions
@@ -55,7 +54,10 @@ extensions = template_extensions + custom_extensions
 templates_path = ["_templates"]
 
 # The suffix of source filenames.
-source_suffix = ".rst"
+source_suffix = {
+    ".rst": "restructuredtext",
+    ".md": "markdown",
+}
 
 # The encoding of source files.
 # source_encoding = "utf-8-sig"
@@ -98,7 +100,7 @@ exclude_patterns = ["_build"]
 
 # If true, the current module name will be prepended to all description
 # unit titles (such as .. function::).
-# add_module_names = True
+add_module_names = False
 
 # If true, sectionauthor and moduleauthor directives will be shown in the
 # output. They are ignored by default.
@@ -113,6 +115,8 @@ pygments_style = "sphinx"
 # If true, keep warnings as "system message" paragraphs in the built documents.
 # keep_warnings = False
 
+myst_enable_extensions = ["colon_fence"]
+
 
 # -- Options for HTML output ---------------------------------------------------
 
@@ -123,9 +127,30 @@ html_theme = "sphinxawesome_theme"
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-# html_theme_options = {}
+html_theme_options = {
+    "show_breadcrumbs": False,
+    "show_prev_next": True,
+    "logo_light": "_static/default/logos/voraus_logo_small.svg",
+    "logo_dark": "_static/default/logos/voraus_logo_small.svg",
+}
 
 html_permalinks_icon = Icons.permalinks_icon
+
+# Shared style options for all files
+rst_prolog = """
+:tocdepth: 3
+
+.. role:: num-class
+   :class: num-ref
+
+.. |vspace| raw:: html
+
+   <div style="margin-top: 0.0em"/>
+
+.. |paragraph| raw:: html
+
+   <div style="margin-top: 2.0em"/>
+"""
 
 # Add any paths that contain custom themes here, relative to this directory.
 # html_theme_path = []
@@ -144,12 +169,14 @@ html_permalinks_icon = Icons.permalinks_icon
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
-# html_favicon = None
+html_favicon = "_static/default/logos/voraus_logo_small.svg"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
+
+html_css_files = ["default/css/custom.css"]
 
 # If not "", a "Last updated on:" timestamp is inserted at every page bottom,
 # using the given strftime format.
@@ -179,7 +206,7 @@ html_static_path = ["_static"]
 # html_show_sourcelink = True
 
 # If true, "Created using Sphinx" is shown in the HTML footer. Default is True.
-# html_show_sphinx = True
+html_show_sphinx = False
 
 # If true, "(C) Copyright ..." is shown in the HTML footer. Default is True.
 # html_show_copyright = True
@@ -194,6 +221,15 @@ html_static_path = ["_static"]
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = "{{ cookiecutter.import_name }}doc"
+
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#confval-numfig
+numfig = True
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#confval-numfig_format
+numfig_format = {
+    "figure": "Fig. %s",
+}
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#confval-numfig_secnum_depth
+numfig_secnum_depth = 0
 
 
 # -- Options for LaTeX output --------------------------------------------------
@@ -238,6 +274,9 @@ latex_documents = [
 
 # If false, no module index is generated.
 # latex_domain_indices = True
+
+# Defines if class inits are also documented
+autoclass_content = "init"
 
 
 # -- Options for manual page output --------------------------------------------
@@ -286,3 +325,7 @@ texinfo_documents = [
 
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 # texinfo_no_detailmenu = False
+
+# Allow myst to create reference targets for heading anchors `h1`, `h2` and `h3`.
+# See: https://myst-parser.readthedocs.io/en/latest/syntax/optional.html#auto-generated-header-anchors
+myst_heading_anchors = 3

@@ -2,16 +2,18 @@
   "full_name": "{% gituser %}",
   "email": "{% gitemail %}",
   "github_user": "",
-  "project_name": "voraus Robot Library",
+  "project_name": "voraus example application",
   "repo_name": "{{ cookiecutter.project_name.lower().replace(' ', '-') }}",
   "package_name": "{{ cookiecutter.repo_name }}",
   "import_name": "{{ cookiecutter.package_name.replace('-', '_') }}",
-  "project_short_description": "A library for robots that helps with a lot of things.",
+  "project_short_description": "An example application built with the voraus template.",
   "url": "https://github.com/vorausrobotik/{{ cookiecutter.repo_name }}",
+  "use_github_pr_lint": true,
+  "use_github_dependabot": true,
+  "protect_wheel": false,
+  "ci_tool": ["jenkins", "github_actions", null],
   "_debug": "False",
-  "_extensions": [
-    "extensions.git_extension.GitExtension"
-  ],
+  "_extensions": ["extensions.git_extension.GitExtension"],
   "_copy_without_render": [
     "docs/_templates/license_compliance.rst.j2",
     "jreleaser.yml"

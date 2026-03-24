@@ -1,0 +1,215 @@
+// Pipeline utilities loaded from .jenkins/utils.groovy in the preparation stage
+def utils = null
+
+pipeline {
+  agent {
+    kubernetes {
+      defaultContainer 'build'
+      yamlFile '{% if cookiecutter._debug == "True" %}cookiecutter-pypackage/{% endif %}.jenkins/pod-spec.yml'
+    }
+  }
+  environment {
+    PACKAGE_NAME = '{{ cookiecutter.package_name }}'
+    PROJECT = 'default'
+    SCOPE = 'private'
+    LOCATION = 'onprem'
+    VPU_DOCKER_REGISTRY = 'artifactory.vorausrobotik.com'
+    COLUMNS = '160'
+  }
+  stages {
+    stage('Prepare') {
+      parallel {
+        stage('Init build environment') {
+          steps {
+            {% if cookiecutter._debug == "True" -%}
+            dir('cookiecutter-pypackage/') {
+            {% endif -%}
+            sh 'uv sync --frozen'
+            {%- if cookiecutter._debug == "True" -%}
+            }
+            {%- endif %}
+          }
+        }
+        stage('Init JFrog CLI') {
+          steps {
+            {% if cookiecutter._debug == "True" -%}
+            dir('cookiecutter-pypackage/') {
+            {% endif -%}
+            script {
+              env.MATURITY = env.TAG_NAME != null ? 'production' : 'testing'
+              env.PYPI_DEPLOY_REPO = "${env.PROJECT}-pypi-${env.SCOPE}-${env.MATURITY}-onprem-local"
+              utils = load '.jenkins/utils.groovy'
+              utils.initJFrogCLI()
+            }
+            {%- if cookiecutter._debug == "True" -%}
+            }
+            {%- endif %}
+          }
+        }
+      }
+    }
+    stage('Build Package') {
+      steps {
+        {% if cookiecutter._debug == "True" -%}
+        dir('cookiecutter-pypackage/') {
+        {% endif -%}
+        sh 'uv run tox run -e build'
+        {%- if cookiecutter._debug == "True" -%}
+        }
+        {%- endif %}
+      }
+    }
+    {% if cookiecutter.protect_wheel == "True" -%}
+    stage('Protect Wheel') {
+      steps {
+        {% if cookiecutter._debug == "True" -%}
+        dir('cookiecutter-pypackage/') {
+        {% endif -%}
+        withCredentials([
+            usernamePassword(
+                credentialsId: 'voraus-software-protector-api-key',
+                usernameVariable: 'PROTECTOR_ACCESS_KEY_ID',
+                passwordVariable: 'PROTECTOR_ACCESS_SECRET_KEY'
+            )
+        ]) {
+          sh 'vpu protect wheel dist/*.whl --identifier={{ cookiecutter.package_name }}-1'
+        }
+        {%- if cookiecutter._debug == "True" -%}
+        }
+        {%- endif %}
+      }
+    }
+    {%- endif %}
+    stage('Build Docker') {
+      steps {
+        {% if cookiecutter._debug == "True" -%}
+        dir('cookiecutter-pypackage/') {
+        {% endif -%}
+        sh 'uv run tox run -e build-docker'
+        {%- if cookiecutter._debug == "True" -%}
+        }
+        {%- endif %}
+      }
+    }
+    stage('Parallel') {
+      parallel {
+        stage('Test') {
+          steps {
+            {% if cookiecutter._debug == "True" -%}
+            dir('cookiecutter-pypackage/') {
+            {% endif -%}
+            // Initialize the test environments in parallel
+            sh 'uv run tox run-parallel -f test --notest --parallel-no-spinner --parallel-live'
+            // Run the test environments in sequence in the precommissioned environments
+            sh 'uv run tox run-parallel -f test --skip-pkg-install -- --maxfail 10'
+            {%- if cookiecutter._debug == "True" -%}
+            }
+            {%- endif %}
+          }
+        }
+        stage('Docs') {
+          steps {
+            {% if cookiecutter._debug == "True" -%}
+            dir('cookiecutter-pypackage/') {
+            {% endif -%}
+            sh 'uv run tox run -e docs'
+            {%- if cookiecutter._debug == "True" -%}
+            }
+            {%- endif %}
+          }
+        }
+        stage('Lint') {
+          steps {
+            {% if cookiecutter._debug == "True" -%}
+            dir('cookiecutter-pypackage/') {
+            {% endif -%}
+            sh 'uv run tox run -e lint'
+            {%- if cookiecutter._debug == "True" -%}
+            }
+            {%- endif %}
+          }
+        }
+        stage('Populate build info') {
+          steps {
+            {% if cookiecutter._debug == "True" -%}
+            dir('cookiecutter-pypackage/') {
+            {% endif -%}
+            script {
+              utils.populateBuildInfo()
+            }
+            {%- if cookiecutter._debug == "True" -%}
+            }
+            {%- endif %}
+          }
+        }
+      }
+    }
+    stage('Publish') {
+      steps {
+        {% if cookiecutter._debug == "True" -%}
+        dir('cookiecutter-pypackage/') {
+        {% endif -%}
+        sh 'uv run tox run -e publish'
+        script {
+          utils.publishBuildInfo()
+        }
+        {%- if cookiecutter._debug == "True" -%}
+        }
+        {%- endif %}
+      }
+    }
+    stage('Publish GitHub Release') {
+      when {
+        buildingTag()
+      }
+      steps {
+        {% if cookiecutter._debug == "True" -%}
+        dir('cookiecutter-pypackage/') {
+        {% endif -%}
+        script {
+          utils.publishGitHubRelease()
+        }
+        {%- if cookiecutter._debug == "True" -%}
+        }
+        {%- endif %}
+      }
+    }
+  }
+  post {
+    always {
+      {% if cookiecutter._debug == "True" -%}
+      dir('cookiecutter-pypackage/') {
+      {% endif -%}
+      junit 'reports/pytest.xml'
+      recordCoverage(
+        tools: [
+          [
+            parser: 'COBERTURA',
+            pattern: 'reports/coverage.xml'
+          ]
+        ]
+      )
+      archiveArtifacts artifacts: 'dist/**', allowEmptyArchive: true
+      {%- if cookiecutter._debug == "True" -%}
+      }
+      {%- endif %}
+    }
+    success {
+      {% if cookiecutter._debug == "True" -%}
+      dir('cookiecutter-pypackage/') {
+      {% endif -%}
+      publishHTML([
+        allowMissing: false,
+        alwaysLinkToLastBuild: false,
+        keepAll: false,
+        reportDir: 'docs/build/html/',
+        reportFiles: 'index.html',
+        reportName: 'Documentation',
+        reportTitles: ''
+      ])
+      {%- if cookiecutter._debug == "True" -%}
+      }
+      {%- endif %}
+    }
+  }
+}

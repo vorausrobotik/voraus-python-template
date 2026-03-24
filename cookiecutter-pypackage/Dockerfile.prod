@@ -1,0 +1,10 @@
+FROM python:3.14-alpine
+
+ENV PYTHONDONTWRITEBYTECODE=1
+
+RUN --mount=type=bind,source=./dist/,target=/pip-packages/ \
+    pip install \
+    --no-cache-dir \
+    --no-compile \
+    --upgrade \
+    /pip-packages/*.whl

@@ -1,0 +1,69 @@
+name: CI pipeline
+
+permissions:
+  contents: write
+  id-token: write
+  issues: write
+  pages: write
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - "main"
+    tags:
+      - "*"
+
+jobs:
+    setup:
+      uses: ./.github/workflows/setup.yml
+      with:
+        package_name: '{{ cookiecutter.package_name }}'
+        project: 'bypass'
+        scope: 'private'
+        maturity: {% raw %}${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags') && 'production' || 'testing' }}{% endraw %}
+        location: 'cloud'
+        registry: 'voraus.jfrog.io'
+
+    build:
+      needs:
+        - setup
+      uses: ./.github/workflows/build.yml
+      secrets: inherit
+      with:
+        vpu_docker_registry: {% raw %}${{ needs.setup.outputs.vpu_docker_registry }}{% endraw %}
+        vpu_docker_image_name: {% raw %}${{ needs.setup.outputs.vpu_docker_image_name }}{% endraw %}
+        vpu_docker_repositories: {% raw %}${{ needs.setup.outputs.vpu_docker_repositories }}{% endraw %}
+        build_name: {% raw %}${{ needs.setup.outputs.build_name }}{% endraw %}
+        build_number: {% raw %}${{ needs.setup.outputs.build_number }}{% endraw %}
+
+    tests-and-coverage:
+      uses: ./.github/workflows/tests_and_coverage.yml
+      needs:
+        - build
+      secrets: inherit
+
+    lint:
+      uses: ./.github/workflows/lint.yml
+      needs:
+        - setup
+      secrets: inherit
+
+    publish:
+      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+      needs:
+      - setup
+      - build
+      - tests-and-coverage
+      - lint
+      uses: ./.github/workflows/publish.yml
+      secrets: inherit
+      with:
+        vpu_docker_registry: {% raw %}${{ needs.setup.outputs.vpu_docker_registry }}{% endraw %}
+        vpu_docker_image_name: {% raw %}${{ needs.setup.outputs.vpu_docker_image_name }}{% endraw %}
+        vpu_docker_repositories: {% raw %}${{ needs.setup.outputs.vpu_docker_repositories }}{% endraw %}
+        pypi_deploy_repo: {% raw %}${{ needs.setup.outputs.pypi_deploy_repo }}{% endraw %}
+        build_name: {% raw %}${{ needs.setup.outputs.build_name }}{% endraw %}
+        build_number: {% raw %}${{ needs.setup.outputs.build_number }}{% endraw %}

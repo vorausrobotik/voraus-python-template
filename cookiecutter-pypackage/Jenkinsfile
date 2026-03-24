@@ -1,0 +1,148 @@
+// Pipeline utilities loaded from .jenkins/utils.groovy in the preparation stage
+def utils = null
+
+pipeline {
+  agent {
+    kubernetes {
+      defaultContainer 'build'
+      yamlFile 'cookiecutter-pypackage/.jenkins/pod-spec.yml'
+    }
+  }
+  environment {
+    PACKAGE_NAME = 'cookiecutter-pypackage'
+    PROJECT = 'default'
+    SCOPE = 'private'
+    LOCATION = 'onprem'
+    VPU_DOCKER_REGISTRY = 'artifactory.vorausrobotik.com'
+    COLUMNS = '160'
+  }
+  stages {
+    stage('Prepare') {
+      parallel {
+        stage('Init build environment') {
+          steps {
+            dir('cookiecutter-pypackage/') {
+            sh 'uv sync --frozen'}
+          }
+        }
+        stage('Init JFrog CLI') {
+          steps {
+            dir('cookiecutter-pypackage/') {
+            script {
+              env.MATURITY = env.TAG_NAME != null ? 'production' : 'testing'
+              env.PYPI_DEPLOY_REPO = "${env.PROJECT}-pypi-${env.SCOPE}-${env.MATURITY}-onprem-local"
+              utils = load '.jenkins/utils.groovy'
+              utils.initJFrogCLI()
+            }}
+          }
+        }
+      }
+    }
+    stage('Build Package') {
+      steps {
+        dir('cookiecutter-pypackage/') {
+        sh 'uv run tox run -e build'}
+      }
+    }
+    stage('Protect Wheel') {
+      steps {
+        dir('cookiecutter-pypackage/') {
+        withCredentials([
+            usernamePassword(
+                credentialsId: 'voraus-software-protector-api-key',
+                usernameVariable: 'PROTECTOR_ACCESS_KEY_ID',
+                passwordVariable: 'PROTECTOR_ACCESS_SECRET_KEY'
+            )
+        ]) {
+          sh 'vpu protect wheel dist/*.whl --identifier=cookiecutter-pypackage-1'
+        }}
+      }
+    }
+    stage('Build Docker') {
+      steps {
+        dir('cookiecutter-pypackage/') {
+        sh 'uv run tox run -e build-docker'}
+      }
+    }
+    stage('Parallel') {
+      parallel {
+        stage('Test') {
+          steps {
+            dir('cookiecutter-pypackage/') {
+            // Initialize the test environments in parallel
+            sh 'uv run tox run-parallel -f test --notest --parallel-no-spinner --parallel-live'
+            // Run the test environments in sequence in the precommissioned environments
+            sh 'uv run tox run-parallel -f test --skip-pkg-install -- --maxfail 10'}
+          }
+        }
+        stage('Docs') {
+          steps {
+            dir('cookiecutter-pypackage/') {
+            sh 'uv run tox run -e docs'}
+          }
+        }
+        stage('Lint') {
+          steps {
+            dir('cookiecutter-pypackage/') {
+            sh 'uv run tox run -e lint'}
+          }
+        }
+        stage('Populate build info') {
+          steps {
+            dir('cookiecutter-pypackage/') {
+            script {
+              utils.populateBuildInfo()
+            }}
+          }
+        }
+      }
+    }
+    stage('Publish') {
+      steps {
+        dir('cookiecutter-pypackage/') {
+        sh 'uv run tox run -e publish'
+        script {
+          utils.publishBuildInfo()
+        }}
+      }
+    }
+    stage('Publish GitHub Release') {
+      when {
+        buildingTag()
+      }
+      steps {
+        dir('cookiecutter-pypackage/') {
+        script {
+          utils.publishGitHubRelease()
+        }}
+      }
+    }
+  }
+  post {
+    always {
+      dir('cookiecutter-pypackage/') {
+      junit 'reports/pytest.xml'
+      recordCoverage(
+        tools: [
+          [
+            parser: 'COBERTURA',
+            pattern: 'reports/coverage.xml'
+          ]
+        ]
+      )
+      archiveArtifacts artifacts: 'dist/**', allowEmptyArchive: true}
+    }
+    success {
+      dir('cookiecutter-pypackage/') {
+      publishHTML([
+        allowMissing: false,
+        alwaysLinkToLastBuild: false,
+        keepAll: false,
+        reportDir: 'docs/build/html/',
+        reportFiles: 'index.html',
+        reportName: 'Documentation',
+        reportTitles: ''
+      ])}
+    }
+  }
+}

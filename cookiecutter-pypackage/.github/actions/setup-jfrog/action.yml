@@ -1,0 +1,12 @@
+name: Setup JFrog CLI
+description: Configure JFrog CLI with OIDC authentication
+
+runs:
+  using: composite
+  steps:
+    - uses: jfrog/setup-jfrog-cli@v4
+      env:
+        JF_URL: https://voraus.jfrog.io
+      with:
+        oidc-provider-name: voraus-github-organization
+        disable-auto-build-publish: "true"
