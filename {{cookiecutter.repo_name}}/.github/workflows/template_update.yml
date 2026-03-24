@@ -30,8 +30,25 @@ jobs:
             echo "Template updates available"
           fi
 
-      - name: Get template commit info
+      - name: Check for existing template update PRs
         if: steps.check.outputs.update_available == 'true'
+        id: existing_pr
+        env:
+          GH_TOKEN: {% raw %}${{ secrets.GITHUB_TOKEN }}{% endraw %}
+        run: |
+          # Check for open PRs with template-update label
+          PR_COUNT=$(gh pr list --label "template-update" --state open --json number --jq 'length')
+
+          if [ "$PR_COUNT" -gt 0 ]; then
+            echo "should_create_pr=false" >> $GITHUB_OUTPUT
+            echo "Found $PR_COUNT existing template update PR(s). Skipping creation of new PR."
+          else
+            echo "should_create_pr=true" >> $GITHUB_OUTPUT
+            echo "No existing template update PRs found. Will create new PR."
+          fi
+
+      - name: Get template commit info
+        if: steps.check.outputs.update_available == 'true' && steps.existing_pr.outputs.should_create_pr == 'true'
         id: template_info
         run: |
           # Get current template commit before update
@@ -47,11 +64,17 @@ jobs:
           echo "checkout=$CHECKOUT" >> $GITHUB_OUTPUT
 
       - name: Update template
-        if: steps.check.outputs.update_available == 'true'
-        run: uvx cruft update --skip-apply-ask
+        if: steps.check.outputs.update_available == 'true' && steps.existing_pr.outputs.should_create_pr == 'true'
+        run: |
+          CHECKOUT="{% raw %}${{ steps.template_info.outputs.checkout }}{% endraw %}"
+          if [ "$CHECKOUT" != "null" ]; then
+            uvx cruft update --skip-apply-ask -c "$CHECKOUT"
+          else
+            uvx cruft update --skip-apply-ask
+          fi
 
       - name: Get updated commit info and changes
-        if: steps.check.outputs.update_available == 'true'
+        if: steps.check.outputs.update_available == 'true' && steps.existing_pr.outputs.should_create_pr == 'true'
         id: changes
         run: |
           # Get new commit after update
@@ -60,19 +83,67 @@ jobs:
 
           CURRENT_COMMIT="{% raw %}${{ steps.template_info.outputs.current_commit }}{% endraw %}"
           TEMPLATE_URL="{% raw %}${{ steps.template_info.outputs.template_url }}{% endraw %}"
+          CHECKOUT="{% raw %}${{ steps.template_info.outputs.checkout }}{% endraw %}"
 
           # Clone template repo to get commit history
+          echo "Cloning template repository..."
           git clone "$TEMPLATE_URL" /tmp/template_repo
           cd /tmp/template_repo
 
-          # Get all commits since current commit
-          COMMITS=$(git log --oneline $CURRENT_COMMIT..HEAD --pretty=format:"- %h %s")
+          # Checkout the correct branch if specified
+          if [ "$CHECKOUT" != "null" ]; then
+            echo "Checking out branch: $CHECKOUT"
+            git checkout "$CHECKOUT"
+          fi
+
+          # Verify both commits exist
+          echo "Verifying commits..."
+          if ! git cat-file -e "$CURRENT_COMMIT^{commit}" 2>/dev/null; then
+            echo "Error: Current commit $CURRENT_COMMIT not found in repository"
+            echo "commits=*Error: Could not find current commit in template repository*" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          if ! git cat-file -e "$LATEST_COMMIT^{commit}" 2>/dev/null; then
+            echo "Error: Latest commit $LATEST_COMMIT not found in repository"
+            echo "commits=*Error: Could not find latest commit in template repository*" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Get all commits between current and latest commit
+          echo "Getting commit history from $CURRENT_COMMIT to $LATEST_COMMIT..."
+          COMMITS=$(git log --oneline "$CURRENT_COMMIT".."$LATEST_COMMIT" --pretty=format:"- %h %s" 2>&1)
+
+          if [ -z "$COMMITS" ]; then
+            echo "No commits found in range or commits are in reverse order"
+            COMMITS="*No new commits found between $CURRENT_COMMIT and $LATEST_COMMIT*"
+          fi
+
+          echo "Commits found:"
+          echo "$COMMITS"
+
           echo "commits<<EOF" >> $GITHUB_OUTPUT
           echo "$COMMITS" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
+          # Check for .rej files (merge conflicts)
+          cd "$GITHUB_WORKSPACE"
+          REJ_FILES=$(find . -name "*.rej" -type f)
+          if [ -n "$REJ_FILES" ]; then
+            echo "Found merge conflict files:"
+            echo "$REJ_FILES"
+            CONFLICT_LIST=$(echo "$REJ_FILES" | sed 's/^\.\//- /')
+            echo "conflict_files<<EOF" >> $GITHUB_OUTPUT
+            echo "$CONFLICT_LIST" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            echo "has_conflicts=true" >> $GITHUB_OUTPUT
+          else
+            echo "No merge conflicts found"
+            echo "has_conflicts=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Create Pull Request
-        if: steps.check.outputs.update_available == 'true'
+        if: steps.check.outputs.update_available == 'true' && steps.existing_pr.outputs.should_create_pr == 'true'
         uses: peter-evans/create-pull-request@v8
         with:
           token: {% raw %}${{ secrets.GITHUB_TOKEN }}{% endraw %}
@@ -85,20 +156,22 @@ jobs:
 
             ## Template Changes
 
-            Template: `{% raw %}${{ steps.template_info.outputs.template_url }}{% endraw %}`
-            Current commit: `{% raw %}${{ steps.template_info.outputs.current_commit }}{% endraw %}`
-            Latest commit: `{% raw %}${{ steps.changes.outputs.latest_commit }}{% endraw %}`
-
-            ### Commits included in this update:
-
             {% raw %}${{ steps.changes.outputs.commits }}{% endraw %}
+            {% raw %}${{ steps.changes.outputs.has_conflicts == 'true' && format('
+
+            ## ⚠️ Merge Conflicts Detected
+
+            The following files had merge conflicts during the template update:
+
+            {0}
+
+            **These conflicts require manual resolution.** Review the `.rej` files to see what changes could not be automatically applied.', steps.changes.outputs.conflict_files) || '' }}{% endraw %}
 
             ---
 
             *This PR was automatically created by the template update workflow.*
 
             ⚠️ **Please review the changes carefully**, especially:
-            - Check for any `.rej` files that indicate merge conflicts
             - Verify that project-specific customizations are preserved
             - Run tests to ensure nothing broke
           labels: |
