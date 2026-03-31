@@ -175,6 +175,7 @@ jobs:
             - Verify that project-specific customizations are preserved
             - Run tests to ensure nothing broke
             - Test foo
+            - Test bar
           labels: |
             template-update
             automated
