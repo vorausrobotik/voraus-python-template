@@ -167,6 +167,7 @@ lint.pydocstyle.convention = "google"
     "S311",     # Random numbers in our tests aren't for cryptographic purposes
     "SLF001",   # Private member access
     "T201",     # Allow print in tests as this is preferred over logging
+    "PLR2004"   # Allow "magic value comparison", e.g. "assert len(list) == 5"
 ]
 "**/__init__.py" = [
     "F401", # Imported but unused
