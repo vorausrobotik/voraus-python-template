@@ -1,0 +1,186 @@
+name: Publish
+
+on:
+  workflow_call:
+    inputs:
+      vpu_docker_registry:
+        required: true
+        type: string
+      vpu_docker_image_name:
+        required: true
+        type: string
+      vpu_docker_repositories:
+        required: true
+        type: string
+      pypi_deploy_repo:
+        required: true
+        type: string
+      build_name:
+        required: true
+        type: string
+      build_number:
+        required: true
+        type: string
+
+jobs:
+  publish-pypi:
+    runs-on: ubuntu-latest
+    env:
+      JFROG_CLI_BUILD_NAME: ${{ inputs.build_name }}
+      JFROG_CLI_BUILD_NUMBER: ${{ inputs.build_number }}
+      JFROG_CLI_TEMP_DIR: ${{ github.workspace }}/.jfrog-build
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-jfrog
+
+      - name: Add Git info to build
+        run: jf rt build-add-git
+
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Install twine
+        run: uv tool install twine
+
+      - name: Configure jf pip
+        run: jf pip-config --repo-resolve pypi --repo-deploy ${{ inputs.pypi_deploy_repo }}
+
+      - name: Download python artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist
+
+      - name: Publish PyPI
+        run: jf twine --module=voraus-pipeline-playground upload dist/*
+
+      - name: Upload build info partials
+        if: success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-partials-${{ github.job }}
+          path: ${{ env.JFROG_CLI_TEMP_DIR }}
+          include-hidden-files: true
+          if-no-files-found: error
+
+  publish-docker:
+    runs-on: ubuntu-latest
+    env:
+      VPU_DOCKER_REGISTRY: ${{ inputs.vpu_docker_registry }}
+      VPU_DOCKER_IMAGE_NAME: ${{ inputs.vpu_docker_image_name }}
+      VPU_DOCKER_REPOSITORIES: ${{ inputs.vpu_docker_repositories }}
+      COLUMNS: 160
+      JFROG_CLI_BUILD_NAME: ${{ inputs.build_name }}
+      JFROG_CLI_BUILD_NUMBER: ${{ inputs.build_number }}
+      JFROG_CLI_TEMP_DIR: ${{ github.workspace }}/.jfrog-build"
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-jfrog
+
+      - name: Add Git info to build
+        run: jf rt build-add-git
+
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Install VPU
+        run: uv tool install voraus-pipeline-utils
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: docker-images
+
+      - name: Load docker images
+        run: docker load -i docker-images.tar
+
+      - name: Publish Docker Image(s)
+        run: vpu docker push
+
+      - name: Upload build info partials
+        if: success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-partials-${{ github.job }}
+          path: ${{ env.JFROG_CLI_TEMP_DIR }}
+          include-hidden-files: true
+          if-no-files-found: error
+
+  publish-build-info:
+    needs:
+      - publish-pypi
+      - publish-docker
+    runs-on: ubuntu-latest
+    env:
+      JFROG_CLI_BUILD_NAME: ${{ inputs.build_name }}
+      JFROG_CLI_BUILD_NUMBER:  ${{ inputs.build_number }}
+      JFROG_CLI_TEMP_DIR: ${{ github.workspace }}/.jfrog-build
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-jfrog
+
+      - name: Add environment and git information to build info
+        run: |
+          jf rt build-collect-env
+          jf rt build-add-git
+
+      - name: Download build info partials
+        uses: actions/download-artifact@v8
+        with:
+          pattern: build-partials-*
+          path: ${{ env.JFROG_CLI_TEMP_DIR }}
+          merge-multiple: true
+
+      - name: Publish unified build info
+        run: jf rt build-publish
+
+  create-github-release:
+    runs-on: ubuntu-latest
+    needs:
+      - publish-pypi
+      - publish-docker
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Run JReleaser
+        uses: jreleaser/release-action@v2
+        env:
+          JRELEASER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          JRELEASER_PROJECT_VERSION: ${{ github.ref_name }}
+
+  publish-docs:
+    runs-on: ubuntu-latest
+    needs:
+      - publish-pypi
+      - publish-docker
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: docs
+          path: docs
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,17 @@
+name: Linting
+
+on: [workflow_call]
+
+jobs:
+  lint-python:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Run static checks
+        run: uv run tox run -e lint

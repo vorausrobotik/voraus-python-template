@@ -1,0 +1,73 @@
+name: Configuration
+
+on:
+  workflow_call:
+    inputs:
+      package_name:
+        required: true
+        type: string
+      project:
+        required: true
+        type: string
+      scope:
+        required: true
+        type: string
+      location:
+        required: true
+        type: string
+      maturity:
+        required: true
+        type: string
+      registry:
+        required: true
+        type: string
+    outputs:
+      vpu_docker_registry:
+        description: "Docker registry URL"
+        value: ${{ jobs.setup.outputs.vpu_docker_registry }}
+      vpu_docker_image_name:
+        description: "Docker image name"
+        value: ${{ jobs.setup.outputs.vpu_docker_image_name }}
+      vpu_docker_repositories:
+        description: "Docker repositories"
+        value: ${{ jobs.setup.outputs.vpu_docker_repositories }}
+      pypi_deploy_repo:
+        description: "PyPI deploy repo"
+        value: ${{ jobs.setup.outputs.pypi_deploy_repo }}
+      build_name:
+        description: "JFrog build name"
+        value: ${{ jobs.setup.outputs.build_name }}
+      build_number:
+        description: "JFrog build number"
+        value: ${{ jobs.setup.outputs.build_number }}
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      vpu_docker_registry: ${{ steps.vars.outputs.vpu_docker_registry }}
+      vpu_docker_image_name: ${{ steps.vars.outputs.vpu_docker_image_name }}
+      vpu_docker_repositories: ${{ steps.vars.outputs.vpu_docker_repositories }}
+      pypi_deploy_repo: ${{ steps.vars.outputs.pypi_deploy_repo }}
+      build_name: ${{ steps.vars.outputs.build_name }}
+      build_number: ${{ steps.vars.outputs.build_number }}
+    steps:
+      - name: Set VPU variables
+        id: vars
+        run: |
+          VPU_DOCKER_IMAGE_NAME=${{ inputs.package_name }}
+          VPU_DOCKER_REGISTRY="${{ inputs.registry }}"
+          VPU_DOCKER_REPOSITORIES="${{ inputs.project }}-docker-${{ inputs.scope }}-${{ inputs.maturity }}-${{ inputs.location }}-local"
+          PYPI_DEPLOY_REPO="${{ inputs.project }}-pypi-${{ inputs.scope }}-${{ inputs.maturity }}-${{ inputs.location }}-local"
+
+          # Unified build name and number for all stages
+          BUILD_NAME="${{ inputs.package_name }}"
+          BUILD_NUMBER="${{ github.run_number }}"
+
+          # Output for other jobs
+          echo "vpu_docker_image_name=${VPU_DOCKER_IMAGE_NAME}" >> $GITHUB_OUTPUT
+          echo "vpu_docker_registry=${VPU_DOCKER_REGISTRY}" >> $GITHUB_OUTPUT
+          echo "vpu_docker_repositories=${VPU_DOCKER_REPOSITORIES}" >> $GITHUB_OUTPUT
+          echo "pypi_deploy_repo=${PYPI_DEPLOY_REPO}" >> $GITHUB_OUTPUT
+          echo "build_name=${BUILD_NAME}" >> $GITHUB_OUTPUT
+          echo "build_number=${BUILD_NUMBER}" >> $GITHUB_OUTPUT
