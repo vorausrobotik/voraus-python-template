@@ -5,36 +5,41 @@ default_remote_url = (
     "{{ cookiecutter.url }}".replace("https://", "git@").replace(".com/", ".com:")
     + ".git"
 )
-
+_REMOVE_PATHS_CI = {
+    "github_actions": [
+        ".jenkins",
+        "Jenkinsfile",
+        ".groovylintrc.json",
+    ],
+    "jenkins": [
+        ".github/actions/",
+        *(
+            f".github/workflows/{workflow}.yml"
+            for workflow in [
+                "build",
+                "lint",
+                "pipeline",
+                "publish",
+                "setup",
+                "tests_and_coverage",
+            ]
+        ),
+    ],
+}
 REMOVE_PATHS = []
 
 match "{{cookiecutter.ci_tool}}":
     case "github_actions":
-        REMOVE_PATHS.extend(
-            [
-                ".jenkins",
-                "Jenkinsfile",
-                ".groovylintrc.json",
-            ]
-        )
+        REMOVE_PATHS.extend(_REMOVE_PATHS_CI["jenkins"])
     case "jenkins":
+        REMOVE_PATHS.extend(_REMOVE_PATHS_CI["github_actions"])
+    case "None":
         REMOVE_PATHS.extend(
-            [
-                *(
-                    f".github/workflows/{workflow}.yml"
-                    for workflow in [
-                        "build",
-                        "lint",
-                        "pipeline",
-                        "publish",
-                        "setup",
-                        "tests_and_coverage",
-                    ]
-                ),
-            ]
+            _REMOVE_PATHS_CI["github_actions"] + _REMOVE_PATHS_CI["jenkins"]
         )
     case _:
-        raise ValueError("Unknown CI tool")
+        msg = "Unknown CI tool '{{cookiecutter.ci_tool}}'"
+        raise ValueError(msg)
 
 if "{{cookiecutter.use_github_dependabot}}" != "True":
     REMOVE_PATHS.extend(
