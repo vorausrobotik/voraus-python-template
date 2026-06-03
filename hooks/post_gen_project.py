@@ -29,9 +29,9 @@ _REMOVE_PATHS_CI = {
 REMOVE_PATHS = []
 
 match "{{cookiecutter.ci_tool}}":
-    case "github_actions":
-        REMOVE_PATHS.extend(_REMOVE_PATHS_CI["jenkins"])
     case "jenkins":
+        REMOVE_PATHS.extend(_REMOVE_PATHS_CI["jenkins"])
+    case "github_actions":
         REMOVE_PATHS.extend(_REMOVE_PATHS_CI["github_actions"])
     case "None":
         REMOVE_PATHS.extend(
