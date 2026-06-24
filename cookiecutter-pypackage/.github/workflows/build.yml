@@ -1,0 +1,99 @@
+name: Build
+
+on:
+  workflow_call:
+    inputs:
+      vpu_docker_registry:
+        required: true
+        type: string
+      vpu_docker_image_name:
+        required: true
+        type: string
+      vpu_docker_repositories:
+        required: true
+        type: string
+      build_name:
+        required: true
+        type: string
+      build_number:
+        required: true
+        type: string
+
+jobs:
+  build-python:
+    runs-on: ubuntu-latest
+    env:
+      COLUMNS: 160
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Sync project
+        run: uv sync --frozen
+
+      - name: Build docs
+        run: uv run tox run -e docs
+
+      - name: Build python app
+        run: uv run tox run -e build
+
+      - name: Upload python artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/*
+
+      - name: Upload docs
+        uses: actions/upload-artifact@v7
+        with:
+          name: docs
+          path: docs/build/html/*
+
+  build-docker:
+    needs:
+      - build-python
+    runs-on: ubuntu-latest
+    env:
+      VPU_DOCKER_REGISTRY: ${{ inputs.vpu_docker_registry }}
+      VPU_DOCKER_IMAGE_NAME: ${{ inputs.vpu_docker_image_name }}
+      VPU_DOCKER_REPOSITORIES: ${{ inputs.vpu_docker_repositories }}
+      COLUMNS: 160
+      JFROG_CLI_BUILD_NAME: ${{ inputs.build_name }}
+      JFROG_CLI_BUILD_NUMBER: ${{ inputs.build_number }}
+      JFROG_CLI_TEMP_DIR: ${{ github.workspace }}/.jfrog-build"
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-jfrog
+
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Install VPU
+        run: uv tool install voraus-pipeline-utils
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Download python artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist
+
+      - name: Build Docker Image(s)
+        run: vpu docker build -f Dockerfile.prod
+
+      - name: Save Docker Image(s)
+        run: vpu docker save --output docker-images.tar
+
+      - name: Upload docker images
+        uses: actions/upload-artifact@v7
+        with:
+          name: docker-images
+          path: docker-images.tar
+
